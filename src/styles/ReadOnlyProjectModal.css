@@ -1,0 +1,53 @@
+.readonly-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+  }
+  
+  .readonly-modal {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  .readonly-tasks {
+    margin-top: 1rem;
+  }
+  
+  .task-item {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .task-item.completed {
+    background-color: #e6ffe6;
+  }
+  
+  .task-item.pending {
+    background-color: #fff6e6;
+  }
+  
+  .close-readonly-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background: #444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  

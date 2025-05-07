@@ -280,4 +280,21 @@ h2 {
     border-radius: 4px;
     cursor: pointer;
   }
+
+  .complete-project-btn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #38b000;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  
+  .project-completed-text {
+    margin-top: 20px;
+    font-weight: bold;
+    color: #38b000;
+  }
+  
   
