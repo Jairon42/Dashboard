@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import '../styles/style.css';
-import { FaHome, FaChartBar, FaProjectDiagram, FaUser } from "react-icons/fa";
+import { FaHome, FaChartBar, FaProjectDiagram, FaUser, FaUsers } from "react-icons/fa";
 
 const Sidebar = () => {
   return (
@@ -16,6 +16,11 @@ const Sidebar = () => {
           <li>
             <Link to="projects">
               <FaProjectDiagram className="nav-icon" /> <span>Projects</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/workers">
+              <FaUsers className="nav-icon" /> <span>Workers</span>
             </Link>
           </li>
           <li><FaChartBar className="nav-icon" /> <span>Stats</span></li>

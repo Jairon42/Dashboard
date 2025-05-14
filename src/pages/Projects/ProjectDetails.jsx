@@ -1,7 +1,10 @@
 // src/pages/projects/ProjectDetails.jsx
 import React, { useState, useEffect } from "react";
 import WorkersModal from "./WorkersModal";
-import "../../styles/Projects.css";
+import "../../styles/style.css";
+import { Button } from '@/components/ui/button';
+import { Badge } from "@/components/ui/badge";
+import { Users, Plus, ArrowLeft, Check, Play } from "lucide-react";
 
 const ProjectDetails = ({ project, onBack, onUpdate }) => {
   const [tasks, setTasks] = useState(project.tasks || []);
@@ -9,6 +12,16 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(null);
+  const [workers, setWorkers] = useState(() => {
+    const saved = localStorage.getItem("workers");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+
+  const saveWorkersToStorage = (updatedWorkers) => {
+    localStorage.setItem("workers", JSON.stringify(updatedWorkers));
+    setWorkers(updatedWorkers);
+  };
 
   useEffect(() => {
     const updatedProject = {
@@ -19,6 +32,39 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
     onUpdate(updatedProject);
   }, [tasks]);
 
+  const handleAssignWorkers = (taskIndex, selectedWorkers) => {
+    const updatedTasks = [...tasks];
+    const task = updatedTasks[taskIndex];
+    task.workers = selectedWorkers;
+    const updatedWorkers = workers.map((worker) => {
+      const isAssigned = selectedWorkers.some((w) => w.id === worker.id);
+      if (isAssigned) {
+        const alreadyHasTask = worker.tasks?.some(
+          (t) => t.taskName === task.name && t.projectName === project.title
+        );
+        if (!alreadyHasTask) {
+          return {
+            ...worker,
+            tasks: [
+              ...(worker.tasks || []),
+              {
+                taskName: task.name,
+                projectName: project.title,
+                dueDate: task.dueDate,
+                status: "assigned", // luego actualizaremos esto
+              },
+            ],
+          };
+        }
+      }
+      return worker;
+    });
+
+    saveWorkersToStorage(updatedWorkers);
+  setTasks(updatedTasks);
+  setShowModal(false);
+};
+
   const calcProgress = (tasksArray) =>
     Math.round(
       (tasksArray.filter((t) => t.status === "completed").length /
@@ -26,12 +72,20 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
         100 || 0
     );
 
-  const getTaskStatus = (task) => {
-    const today = new Date().toISOString().split("T")[0];
-    if (task.status === "completed") return "Completada";
-    if (!task.start) return new Date(task.dueDate) < new Date(today) ? "Retrasada" : "Pendiente";
-    return new Date(task.dueDate) < new Date(today) ? "Retrasada" : "En progreso";
-  };
+    const getTaskStatus = (task) => {
+      const today = new Date().toISOString().split("T")[0];
+      if (task.status === "completed") {
+          const dueDate = new Date(task.dueDate);
+          const completionDate = new Date(task.completionDate);
+          if (completionDate <= dueDate) {
+              return "In time";
+          } else {
+              return "Delayed";
+          }
+      }
+      if (!task.start) return new Date(task.dueDate) < new Date(today) ? "Delayed" : "Pending";
+      return new Date(task.dueDate) < new Date(today) ? "Delayed" : "In progress";
+  }
 
   const handleStartTask = (index) => {
     const updated = [...tasks];
@@ -42,9 +96,11 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
 
   const handleCompleteTask = (index) => {
     const updated = [...tasks];
+    const completionDate = new Date().toISOString().split("T")[0]; // Fecha de finalización
     updated[index].status = "completed";
+    updated[index].completionDate = completionDate;
     setTasks(updated);
-  };
+}
 
   const handleAddTask = () => {
     if (!newTask.name || !newTask.dueDate) return;
@@ -58,92 +114,117 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
     setIsAdding(false);
   };
 
-  const handleAssignWorkers = (taskIndex, selectedWorkers) => {
-    const updated = [...tasks];
-    updated[taskIndex].workers = selectedWorkers;
-    setTasks(updated);
-    setShowModal(false);
-  };
-
   return (
-    <div className="details-container">
-      <div className="header-row">
-        <div><strong>Proyecto:</strong> {project.title}</div>
-        <div><strong>Fechas:</strong> {project.startDate} → {project.endDate}</div>
-        <div><strong>Progreso:</strong> {calcProgress(tasks)}%</div>
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">{project.title}</h2>
+          <p className="text-sm text-muted-foreground">{project.startDate} → {project.endDate}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">Progress: {calcProgress(tasks)}%</Badge>
+          {tasks.length > 0 && tasks.every(t => t.status === "completed") && !project.completed && (
+            <Badge variant="success">✅ Project Finished</Badge>
+          )}
+        </div>
       </div>
-
-      <div className="description">{project.description}</div>
-
-      <table className="task-table">
-        <thead>
-          <tr>
-            <th style={{ width: "120px" }}>Nombre</th>
-            <th style={{ width: "600px"}}>Acción</th>
-            <th>Inicio</th>
-            <th>Entrega</th>
-            <th>Estado</th>
-            <th>Trabajadores</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task, i) => (
-            <tr key={i} className={task.status === "completed" ? "completed" : ""}>
-              <td>
-                {task.status !== "completed" ? (
-                  task.start ? (
-                    <button onClick={() => handleCompleteTask(i)}>Completar</button>
+  
+      <div>
+        <h3 className="font-semibold mb-1">About this project:</h3>
+        <p className="text-sm text-muted-foreground">{project.description}</p>
+      </div>
+  
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-muted text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2">Action</th>
+              <th className="px-4 py-2">Task</th>
+              <th className="px-4 py-2">Start</th>
+              <th className="px-4 py-2">Due</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2">Workers</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map((task, i) => (
+              <tr key={i} className={task.status === "completed" ? "bg-green-50" : ""}>
+                <td className="px-4 py-2">
+                  {task.status !== "completed" ? (
+                    task.start ? (
+                      <Button variant="outline" size="sm" onClick={() => handleCompleteTask(i)}>
+                        <Check className="w-4 h-4 mr-1" /> Finish
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" onClick={() => handleStartTask(i)}>
+                        <Play className="w-4 h-4 mr-1" /> Start
+                      </Button>
+                    )
                   ) : (
-                    <button onClick={() => handleStartTask(i)}>Iniciar</button>
-                  )
+                    <Check className="text-green-500" />
+                  )}
+                </td>
+                <td className="px-4 py-2">{task.name}</td>
+                <td className="px-4 py-2">{task.start || "—"}</td>
+                <td className="px-4 py-2">{task.dueDate}</td>
+                <td className="px-4 py-2">
+                  <Badge variant={
+                    getTaskStatus(task) === "Delayed"
+                      ? "destructive"
+                      : getTaskStatus(task) === "In time"
+                      ? "success"
+                      : "outline"
+                  }>
+                    {getTaskStatus(task)}
+                  </Badge>
+                </td>
+                <td className="px-4 py-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setSelectedTaskIndex(i); setShowModal(true); }}
+                  >
+                    <Users className="w-4 h-4 mr-1" /> {task.workers?.length || 0}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+  
+            <tr>
+              <td colSpan="6" className="px-4 py-4">
+                {isAdding ? (
+                  <div className="flex flex-col md:flex-row items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Task name"
+                      value={newTask.name}
+                      onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+                      className="input w-full md:w-1/3"
+                    />
+                    <input
+                      type="date"
+                      value={newTask.dueDate}
+                      onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                      className="input"
+                    />
+                    <Button size="sm" onClick={handleAddTask}>Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
+                  </div>
                 ) : (
-                  "✔"
+                  <Button variant="outline" size="sm" onClick={() => setIsAdding(true)}>
+                    <Plus className="w-4 h-4 mr-1" /> Add new task
+                  </Button>
                 )}
               </td>
-              <td>{task.name}</td>
-              <td>{task.start || "—"}</td>
-              <td>{task.dueDate}</td>
-              <td>{getTaskStatus(task)}</td>
-              <td>
-                <button onClick={() => { setSelectedTaskIndex(i); setShowModal(true); }}>
-                  👥 {task.workers?.length || 0}
-                </button>
-              </td>
             </tr>
-          ))}
-
-          <tr>
-            <td colSpan="6">
-              {isAdding ? (
-                <div className="add-task-row">
-                  <input
-                    type="text"
-                    placeholder="Nombre de la tarea"
-                    value={newTask.name}
-                    onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-                  />
-                  <input
-                    type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                  />
-                  <button onClick={handleAddTask}>Guardar</button>
-                  <button onClick={() => setIsAdding(false)}>Cancelar</button>
-                </div>
-              ) : (
-                <button onClick={() => setIsAdding(true)}>+ Añadir nueva tarea</button>
-              )}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <button className="back-btn" onClick={onBack}>← Volver</button>
-
-      {tasks.length > 0 && tasks.every(t => t.status === "completed") && !project.completed && (
-        <p className="project-completed-text">✅ Proyecto completado</p>
-      )}
-
+          </tbody>
+        </table>
+      </div>
+  
+      <Button variant="link" onClick={onBack} className="flex items-center">
+        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+      </Button>
+  
       {showModal && (
         <WorkersModal
           task={tasks[selectedTaskIndex]}

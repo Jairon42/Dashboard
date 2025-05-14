@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects/Projects";
+import Workers from "./pages/Workers/Workers";
 import Statistics from "./pages/Statistics";
 import Profile from "./pages/Profile";
 import Layout from "./layout/Layout";
@@ -11,6 +12,7 @@ function Router() {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/workers" element={<Workers />} />
         <Route path="/statistics" element={<Statistics />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
