@@ -59,8 +59,9 @@ useEffect(() => {
   
 
   const handleUpdateProject = (updatedProject) => {
-    const completedTasks = updatedProject.tasks.filter(t => t.status === "completed").length;
-    const totalTasks = updatedProject.tasks.length;
+    const relevantTasks = updatedProject.tasks.filter(t => t.status !== "incomplete");
+    const completedTasks = relevantTasks.filter(t => t.status === "completed").length;
+    const totalTasks = relevantTasks.length;
     const newProgress = Math.round((completedTasks / totalTasks) * 100 || 0);
 
     const updated = {
@@ -80,9 +81,11 @@ useEffect(() => {
       id: crypto.randomUUID(),
       completed: false,
       progress: Math.round(
-        (newProject.tasks.filter((t) => t.status === "completed").length / 
-          newProject.tasks.length) * 100 || 0
-      ),
+        (
+          newProject.tasks.filter(t => t.status === "completed").length /
+          newProject.tasks.filter(t => t.status !== "incomplete").length
+        ) * 100 || 0
+      ),      
     };
     setProjects([...projects, fullProject]);
     setShowModal(false);
@@ -175,9 +178,10 @@ useEffect(() => {
   
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((project) => {
-          const allTasksCompleted = project.tasks.length > 0 &&
-            project.tasks.every(t => t.status === "completed");
-  
+          const relevantTasks = project.tasks.filter(t => t.status !== "incomplete");
+          const allTasksCompleted = relevantTasks.length > 0 &&
+            relevantTasks.every(t => t.status === "completed");
+          
           return (
             <div
               key={project.id}
