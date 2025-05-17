@@ -3,64 +3,35 @@ import ProjectForm from "./ProjectForm";
 import ProjectDetails from "./ProjectDetails";
 import WorkersModal from "./WorkersModal";
 import ReadOnlyProjectModal from "./ReadOnlyProjectModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import "../../styles/style.css";
-
-const ConfirmationModal = ({ isOpen, onConfirm, onCancel }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md text-center animate-scaleIn">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          Are you sure you want to continue?
-        </h3>
-        <div className="flex justify-center gap-4">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 
 const Projects = () => {
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [readOnlyProject, setReadOnlyProject] = useState(null);
-  const [confirmDeleteModalOpen, setConfirmDeleteModalOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
   useEffect(() => {
-  const stored = localStorage.getItem("projects");
-  if (stored) {
-    setProjects(JSON.parse(stored));
-  }
-  setHasLoaded(true);
-}, []);
+    const stored = localStorage.getItem("projects");
+    if (stored) {
+      setProjects(JSON.parse(stored));
+    }
+    setHasLoaded(true);
+  }, []);
 
-useEffect(() => {
-  if (hasLoaded) {
-    localStorage.setItem("projects", JSON.stringify(projects));
-  }
-}, [projects, hasLoaded]);
-  
+  useEffect(() => {
+    if (hasLoaded) {
+      localStorage.setItem("projects", JSON.stringify(projects));
+    }
+  }, [projects, hasLoaded]);
 
   const handleUpdateProject = (updatedProject) => {
-    const relevantTasks = updatedProject.tasks.filter(t => t.status !== "incomplete");
-    const completedTasks = relevantTasks.filter(t => t.status === "completed").length;
+    const relevantTasks = updatedProject.tasks.filter((t) => t.status !== "incomplete");
+    const completedTasks = relevantTasks.filter((t) => t.status === "completed").length;
     const totalTasks = relevantTasks.length;
     const newProgress = Math.round((completedTasks / totalTasks) * 100 || 0);
 
@@ -82,10 +53,10 @@ useEffect(() => {
       completed: false,
       progress: Math.round(
         (
-          newProject.tasks.filter(t => t.status === "completed").length /
-          newProject.tasks.filter(t => t.status !== "incomplete").length
+          newProject.tasks.filter((t) => t.status === "completed").length /
+          newProject.tasks.filter((t) => t.status !== "incomplete").length
         ) * 100 || 0
-      ),      
+      ),
     };
     setProjects([...projects, fullProject]);
     setShowModal(false);
@@ -93,27 +64,7 @@ useEffect(() => {
 
   const handleBackFromDetails = () => {
     setSelectedProject(null);
-  };
-
-  const handleFinalizeProject = (id) => {
-    const updated = projects.map((p) => {
-      if (p.id === id) {
-        const currentDate = new Date();
-        const projectEndDate = new Date(p.endDate);
-  
-        const completedOnTime = currentDate <= projectEndDate;
-        const realEndDate = completedOnTime ? currentDate : projectEndDate;
-  
-        return {
-          ...p,
-          completed: true,
-          actualEndDate: realEndDate.toLocaleDateString(),
-          completedOnTime,
-        };
-      }
-      return p;
-    });
-    setProjects(updated);
+    setReadOnlyProject(null);
   };
 
   const handleProjectClick = (project) => {
@@ -124,27 +75,25 @@ useEffect(() => {
     }
   };
 
-  const handleDeleteProject = (id) => {
-    const updatedProjects = projects.filter((project) => project.id !== id);
-    setProjects(updatedProjects);
-    setConfirmDeleteModalOpen(false);
-  };
-
-  const handleDeleteAllProjects = () => {
-    localStorage.removeItem("projects");
-    setProjects([]);
-    setConfirmDeleteModalOpen(false);
-  };  
-
-  const handleDeleteProjectClick = (project) => {
-    setProjectToDelete(project);
-    setConfirmDeleteModalOpen(true);
-  };
-
-  const handleCancelDelete = () => {
-    setConfirmDeleteModalOpen(false);
+  const handleConfirmDelete = () => {
+    if (projectToDelete) {
+      setProjects(projects.filter((p) => p.id !== projectToDelete.id));
+    } else {
+      setProjects([]);
+    }
+    setShowConfirm(false);
     setProjectToDelete(null);
   };
+
+  const reopenProject = (id) => {
+    projects.map( (p) => {
+      if(p.id === id){
+        p.completed = false;
+        handleUpdateProject(p);
+        setSelectedProject(p);
+      }
+    })
+  }
 
   if (selectedProject) {
     return (
@@ -152,6 +101,17 @@ useEffect(() => {
         project={selectedProject}
         onBack={handleBackFromDetails}
         onUpdate={handleUpdateProject}
+      />
+    );
+  }
+
+  if (readOnlyProject) {
+    return (
+      <ReadOnlyProjectModal
+        isOpen={true}
+        project={readOnlyProject}
+        onClose={() => setReadOnlyProject(false)}
+        onReopen={reopenProject}
       />
     );
   }
@@ -169,106 +129,87 @@ useEffect(() => {
           </button>
           <button
             className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 transition"
-            onClick={() => setConfirmDeleteModalOpen(true)}
+            onClick={() => {
+              setProjectToDelete(null); // Borrar todos
+              setShowConfirm(true);
+            }}
           >
             Delete All
           </button>
         </div>
       </div>
-  
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => {
-          const relevantTasks = project.tasks.filter(t => t.status !== "incomplete");
-          const allTasksCompleted = relevantTasks.length > 0 &&
-            relevantTasks.every(t => t.status === "completed");
-          
-          return (
-            <div
-              key={project.id}
-              onClick={() => handleProjectClick(project)}
-              className="relative bg-white shadow-md rounded-2xl p-4 cursor-pointer hover:shadow-xl transition group"
+        {projects.map((project) => (
+          <div
+            key={project.id}
+            onClick={() => handleProjectClick(project)}
+            className="relative bg-white shadow-md rounded-2xl p-4 cursor-pointer hover:shadow-xl transition group"
+          >
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xl z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                setProjectToDelete(project);
+                setShowConfirm(true);
+              }}
             >
-              <button
-                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 text-xl"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteProjectClick(project);
-                }}
-              >
-                &times;
-              </button>
-  
-              <h3 className="text-lg font-semibold text-gray-800 truncate">
-                {project.title}
-              </h3>
-              <p className="text-sm text-gray-500 mb-2">
-                {project.startDate} → {project.endDate}
-              </p>
-  
-              <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-                {project.description}
-              </p>
-  
-              <p className="text-sm font-medium text-gray-700 mb-2">
-                🧩 {project.tasks.length} Tasks
-              </p>
-  
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: `${project.progress}%` }}
-                ></div>
-              </div>
-              <p className="text-sm text-gray-600">Progress: {project.progress}%</p>
-  
-              {!project.completed && allTasksCompleted && (
-                <button
-                  className="mt-4 w-full bg-green-600 text-white py-1.5 rounded-lg hover:bg-green-700 transition"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleFinalizeProject(project.id);
-                  }}
-                >
-                  Finalizar proyecto
-                </button>
-              )}
-  
-              {project.completed && (
-                <p className="mt-4 text-sm text-green-600 font-semibold">
-                  ✅ Project Finished
-                </p>
-              )}
+              &times;
+            </button>
+            <h3 className="text-lg font-semibold text-gray-800 truncate">
+              {project.title}
+            </h3>
+            <p className="text-sm text-gray-500 mb-2">
+              {project.startDate} → {project.endDate}
+            </p>
+            <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+              {project.description}
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              🧩 {project.tasks.length} Tasks
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+              <div
+                className="bg-blue-600 h-2 rounded-full"
+                style={{ width: `${project.progress}%` }}
+              ></div>
             </div>
-          );
-        })}
+            <p className="text-sm text-gray-600">
+              Progress: {project.progress}%
+            </p>
+            {project.completed && (
+              <p className="mt-4 text-sm text-green-600 font-semibold">
+                ✅ Project Finished
+              </p>
+            )}
+          </div>
+        ))}
       </div>
-  
+
       <ProjectForm
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSave={handleSaveProject}
       />
-  
-      <ReadOnlyProjectModal
-        isOpen={!!readOnlyProject}
-        project={readOnlyProject}
-        onClose={() => setReadOnlyProject(null)}
-      />
-  
-      <ConfirmationModal
-        isOpen={confirmDeleteModalOpen && projectToDelete !== null}
-        onConfirm={() => handleDeleteProject(projectToDelete.id)}
-        onCancel={handleCancelDelete}
-      />
-  
-      <ConfirmationModal
-        isOpen={confirmDeleteModalOpen && projectToDelete === null}
-        onConfirm={handleDeleteAllProjects}
-        onCancel={handleCancelDelete}
+
+      <ConfirmDialog
+        open={showConfirm}
+        onClose={() => {
+          setShowConfirm(false);
+          setProjectToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title={projectToDelete ? "Delete this project?" : "Delete all projects?"}
+        message={
+          projectToDelete
+            ? "Are you sure you want to delete this project? This action cannot be undone."
+            : "Are you sure you want to delete all projects? This action cannot be undone."
+        }
+        confirmText={projectToDelete ? "Delete" : "Delete All"}
+        cancelText="Cancel"
       />
     </div>
   );
-  
 };
 
 export default Projects;

@@ -5,7 +5,8 @@ import TaskDetailsPanel from "./TaskDetailsPanel";
 import "../../styles/style.css";
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, ArrowLeft, Check, Play } from "lucide-react";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { Users, Plus, ArrowLeft } from "lucide-react";
 
 const ProjectDetails = ({ project, onBack, onUpdate }) => {
   const [tasks, setTasks] = useState(project.tasks || []);
@@ -14,6 +15,8 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(null);
   const [taskDetailIndex, setTaskDetailIndex] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const [workers, setWorkers] = useState(() => {
     const saved = localStorage.getItem("workers");
     return saved ? JSON.parse(saved) : [];
@@ -33,10 +36,29 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
     onUpdate(updatedProject);
   }, [tasks]);
 
+  const calcProgress = (tasksArray) => {
+    const validTasks = tasksArray.filter((t) => t.status !== "incomplete");
+    if (validTasks.length === 0) return 0;
+    const completed = validTasks.filter((t) => t.status === "completed").length;
+    return Math.round((completed / validTasks.length) * 100);
+  };
+
+  const getTaskStatus = (task) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (task.status === "completed") {
+      const dueDate = new Date(task.dueDate);
+      const completionDate = new Date(task.completionDate);
+      return completionDate <= dueDate ? "In time" : "Delayed";
+    }
+    if (!task.start) return new Date(task.dueDate) < new Date(today) ? "Delayed" : "Pending";
+    return new Date(task.dueDate) < new Date(today) ? "Delayed" : "inProgress";
+  };
+
   const handleAssignWorkers = (taskIndex, selectedWorkers) => {
     const updatedTasks = [...tasks];
     const task = updatedTasks[taskIndex];
     task.workers = selectedWorkers;
+
     const updatedWorkers = workers.map((worker) => {
       const isAssigned = selectedWorkers.some((w) => w.id === worker.id);
       if (isAssigned) {
@@ -66,24 +88,6 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
     setShowModal(false);
   };
 
-  const calcProgress = (tasksArray) =>
-    Math.round(
-      (tasksArray.filter((t) => t.status === "completed").length /
-        tasksArray.filter((t) => t.status !== "incomplete").length) *
-        100 || 0
-    );
-  
-  const getTaskStatus = (task) => {
-    const today = new Date().toISOString().split("T")[0];
-    if (task.status === "completed") {
-      const dueDate = new Date(task.dueDate);
-      const completionDate = new Date(task.completionDate);
-      return completionDate <= dueDate ? "In time" : "Delayed";
-    }
-    if (!task.start) return new Date(task.dueDate) < new Date(today) ? "Delayed" : "Pending";
-    return new Date(task.dueDate) < new Date(today) ? "Delayed" : "In progress";
-  };
-
   const handleStartTask = (index) => {
     const updated = [...tasks];
     updated[index].start = new Date().toISOString().split("T")[0];
@@ -93,27 +97,52 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
 
   const handleCompleteTask = (index) => {
     const updated = [...tasks];
-    const completionDate = new Date().toISOString().split("T")[0];
     updated[index].status = "completed";
-    updated[index].completionDate = completionDate;
+    updated[index].completionDate = new Date().toISOString().split("T")[0];
     setTasks(updated);
   };
 
   const handleAddTask = () => {
     if (!newTask.name || !newTask.dueDate) return;
-
-    const updatedTasks = [
-      ...tasks,
-      { ...newTask, status: "pending", start: null, workers: [], equipment: "" },
-    ];
+    const updatedTasks = [...tasks, {
+      ...newTask,
+      status: "pending",
+      start: null,
+      workers: [],
+      equipment: ""
+    }];
     setTasks(updatedTasks);
     setNewTask({ name: "", dueDate: "" });
     setIsAdding(false);
   };
-  
+
+  const handleFinalizeProject = (id, forceIncomplete = false) => {
+    const saved = JSON.parse(localStorage.getItem("projects")) || [];
+    const updated = saved.map((p) => {
+      if (p.id === id) {
+        const currentDate = new Date();
+        const projectEndDate = new Date(p.endDate);
+        const completedOnTime = currentDate <= projectEndDate;
+        return {
+          ...p,
+          completed: true,
+          actualEndDate: currentDate.toLocaleDateString(),
+          completedOnTime,
+          forceIncomplete,
+          readonly: true,
+        };
+      }
+      onBack();
+      return p;
+    });
+
+    localStorage.setItem("projects", JSON.stringify(updated));
+    onUpdate(updated.find((p) => p.id === id));
+  };
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">{project.title}</h2>
@@ -124,16 +153,18 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
           {tasks.length > 0 &&
             tasks.every(t => t.status === "completed" || t.status === "incomplete") &&
             !project.completed && (
-            <Badge variant="success">✅ Project Finished</Badge>
+              <Badge variant="success">✅ Project Finished</Badge>
           )}
         </div>
       </div>
 
+      {/* Description */}
       <div>
         <h3 className="font-semibold mb-1">About this project:</h3>
         <p className="text-sm text-muted-foreground">{project.description}</p>
       </div>
 
+      {/* Tasks Table */}
       <div className="overflow-x-auto rounded-lg border">
         <table className="min-w-full text-sm text-left">
           <thead className="bg-muted text-muted-foreground">
@@ -148,22 +179,20 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
           <tbody>
             {tasks.map((task, i) => (
               <tr
-              key={i}
-              className={`cursor-pointer hover:bg-muted 
-                ${task.status === "completed" ? "bg-green-100" : ""} 
-                ${task.status === "incomplete" ? "bg-red-200" : ""}`}
-              onClick={() => setTaskDetailIndex(i)}
-            >
-            <td className="px-4 py-2">{task.name}</td>
+                key={i}
+                className={`cursor-pointer hover:bg-muted 
+                  ${task.status === "completed" ? "bg-green-100" : ""} 
+                  ${task.status === "incomplete" ? "bg-red-200" : ""}`}
+                onClick={() => setTaskDetailIndex(i)}
+              >
+                <td className="px-4 py-2">{task.name}</td>
                 <td className="px-4 py-2">{task.start || "—"}</td>
                 <td className="px-4 py-2">{task.dueDate}</td>
                 <td className="px-4 py-2">
                   <Badge variant={
-                    getTaskStatus(task) === "Delayed"
-                      ? "destructive"
-                      : getTaskStatus(task) === "In time"
-                      ? "success"
-                      : "outline"
+                    getTaskStatus(task) === "Delayed" ? "destructive" :
+                    getTaskStatus(task) === "In time" ? "success" :
+                    "outline"
                   }>
                     {getTaskStatus(task)}
                   </Badge>
@@ -181,6 +210,7 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
               </tr>
             ))}
 
+            {/* Add Task */}
             <tr>
               <td colSpan="5" className="px-4 py-4">
                 {isAdding ? (
@@ -212,10 +242,27 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
         </table>
       </div>
 
+      {/* Footer Buttons */}
       <Button variant="link" onClick={onBack} className="flex items-center">
         <ArrowLeft className="w-4 h-4 mr-1" /> Back
       </Button>
 
+      <Button
+        onClick={() => {
+          const isFullyCompleted = tasks.every(
+            (t) => t.status === "completed" || t.status === "incomplete"
+          );
+          if (isFullyCompleted) {
+            handleFinalizeProject(project.id);
+          } else {
+            setShowConfirm(true);
+          }
+        }}
+      >
+        Finalizar proyecto
+      </Button>
+
+      {/* Modals */}
       {showModal && (
         <WorkersModal
           task={tasks[selectedTaskIndex]}
@@ -231,30 +278,39 @@ const ProjectDetails = ({ project, onBack, onUpdate }) => {
           onUpdate={(updatedTask) => {
             const updatedTasks = [...tasks];
             updatedTasks[taskDetailIndex] = updatedTask;
-          
+
             const updatedProject = {
               ...project,
               tasks: updatedTasks,
               progress: calcProgress(updatedTasks),
             };
-          
-            // Persistimos en localStorage
+
             const savedProjects = JSON.parse(localStorage.getItem("projects")) || [];
             const updatedProjects = savedProjects.map((p) =>
               p.id === updatedProject.id ? updatedProject : p
             );
-          
             localStorage.setItem("projects", JSON.stringify(updatedProjects));
-          
             setTasks(updatedTasks);
-            onUpdate(updatedProject); // Dispara actualización al padre también
+            onUpdate(updatedProject);
             setTaskDetailIndex(null);
           }}
-          
           onStart={() => handleStartTask(taskDetailIndex)}
           onComplete={() => handleCompleteTask(taskDetailIndex)}
         />
       )}
+
+      <ConfirmDialog
+        open={showConfirm}
+        onClose={setShowConfirm}
+        onConfirm={() => {
+          handleFinalizeProject(project.id, true);
+          setShowConfirm(false);
+        }}
+        title="¿Finalizar proyecto como incompleto?"
+        message="Hay tareas que aún no están completadas. ¿Deseas finalizar el proyecto igualmente?"
+        confirmText="Finalizar como incompleto"
+        cancelText="Cancelar"
+      />
     </div>
   );
 };

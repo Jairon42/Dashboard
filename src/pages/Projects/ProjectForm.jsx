@@ -7,7 +7,7 @@ const ProjectForm = ({ isOpen, onClose, onSave }) => {
     startDate: "",
     endDate: "",
     description: "",
-    tasks: [{ name: "", dueDate: "" }],
+    tasks: [{ name: "", dueDate: "", status: "pending" }],
   });
 
   const modalRef = useRef();
@@ -39,7 +39,7 @@ const ProjectForm = ({ isOpen, onClose, onSave }) => {
   const addTask = () => {
     setFormData({
       ...formData,
-      tasks: [...formData.tasks, { name: "", dueDate: "" }],
+      tasks: [...formData.tasks, { name: "", dueDate: "", status: "pending" }],
     });
   };
 
@@ -51,7 +51,7 @@ const ProjectForm = ({ isOpen, onClose, onSave }) => {
       startDate: "",
       endDate: "",
       description: "",
-      tasks: [{ name: "", dueDate: "" }],
+      tasks: [{ name: "", dueDate: "", status: "pending" }],
     });
     onClose();
   };

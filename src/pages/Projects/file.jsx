@@ -1,45 +1,29 @@
-import React, { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+/*import React, { useState } from "react";
+//import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import WorkerCard from "./WorkerCard";
+//import WorkerCard from "./WorkerCard";
 
-const ReadOnlyProjectModal = ({ isOpen, project, onClose, onReopen }) => {
+const ReadOnlyProjects = ({ isOpen, project, onClose, onReopen }) => {
   const [selectedTask, setSelectedTask] = useState(null);
-  if (!isOpen || !project) return null;
 
   const getProjectStatusColor = () => {
-    if (project.forceIncomplete) return "bg-red-700 text-white";
-    if (!project.completedOnTime) return "bg-red-200 text-red-800";
+    if (project.canceled) return "bg-red-700 text-white";
+    if (project.completedWithDelay) return "bg-red-200 text-red-800";
     return "bg-green-200 text-green-800";
   };
 
   const getTaskStatusColor = (task) => {
-    if (task.status === "incomplete") return "bg-red-700 text-white";
-    if (task.status === "completed") {
-      const dueDate = new Date(task.dueDate);
-      const completionDate = new Date(task.completionDate);
-      return completionDate > dueDate
-        ? "bg-red-200 text-red-800"
-        : "bg-green-200 text-green-800";
-    }
+    if (task.canceled) return "bg-red-700 text-white";
+    if (task.completed && task.delayed) return "bg-red-200 text-red-800";
+    if (task.completed) return "bg-green-200 text-green-800";
     return "bg-gray-200 text-gray-800";
   };
 
-  const getTaskStatusLabel = (task) => {
-    if (task.status === "incomplete") return "Cancelada";
-    if (task.status === "completed") {
-      const dueDate = new Date(task.dueDate);
-      const completionDate = new Date(task.completionDate);
-      return completionDate > dueDate ? "Retrasada" : "A tiempo";
-    }
-    return "Desconocido";
-  };
-
   const getProjectStatusText = () => {
-    if (!project.completed) return "Cancelado";
-    if (!project.completedOnTime) return "Completado con retraso";
+    if (project.canceled) return "Cancelado";
+    if (project.completedWithDelay) return "Completado con retraso";
     return "Completado a tiempo";
   };
 
@@ -51,7 +35,7 @@ const ReadOnlyProjectModal = ({ isOpen, project, onClose, onReopen }) => {
   return (
     <Card className="mt-4">
       <CardContent className="p-6 space-y-6">
-        {/* ENCABEZADO DEL PROYECTO */}
+        
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-semibold">{project.title}</h2>
@@ -66,10 +50,10 @@ const ReadOnlyProjectModal = ({ isOpen, project, onClose, onReopen }) => {
           </div>
         </div>
 
-        {/* DESCRIPCIÓN */}
+        
         <p className="text-gray-700">{project.description}</p>
 
-        {/* TAREAS */}
+       
         <div className="space-y-4">
           <h3 className="font-semibold text-lg">Tareas</h3>
           <table className="w-full border text-sm">
@@ -87,7 +71,13 @@ const ReadOnlyProjectModal = ({ isOpen, project, onClose, onReopen }) => {
                   <td className="p-2">{task.name}</td>
                   <td className="p-2">
                     <Badge className={cn("text-xs", getTaskStatusColor(task))}>
-                      {getTaskStatusLabel(task)}
+                      {task.canceled
+                        ? "Cancelada"
+                        : task.completed
+                        ? task.delayed
+                          ? "Retrasada"
+                          : "A tiempo"
+                        : "Incompleta"}
                     </Badge>
                   </td>
                   <td className="p-2">{task.dueDate}</td>
@@ -106,7 +96,7 @@ const ReadOnlyProjectModal = ({ isOpen, project, onClose, onReopen }) => {
           </table>
         </div>
 
-        {/* TRABAJADORES ASIGNADOS A LA TAREA SELECCIONADA */}
+        
         {selectedTask && (
           <div className="mt-4">
             <h4 className="font-semibold text-md mb-2">
@@ -124,21 +114,15 @@ const ReadOnlyProjectModal = ({ isOpen, project, onClose, onReopen }) => {
           </div>
         )}
 
-        {/* BOTÓN PARA REABRIR PROYECTO */}
-        <div className="pt-4 border-t flex gap-2 items-center">
+        
+        <div className="pt-4 border-t">
           <Button variant="destructive" onClick={() => onReopen(project.id)}>
             Reabrir proyecto
           </Button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800"
-          >
-            ← Volver a Proyectos
-          </button>
         </div>
       </CardContent>
     </Card>
   );
 };
 
-export default ReadOnlyProjectModal;
+export default ReadOnlyProjects;*/
